@@ -1,3 +1,5 @@
+= イメージの作成
+
 Red Hat Enterprise Linux のラボ体験へようこそ。
 
 このテキストの横に表示されているビルドホストは、Subscription Manager に登録された Red Hat Enterprise Linux 10 システムです。

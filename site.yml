@@ -1,6 +1,6 @@
 ---
 site:
-  title: "RHEL Image Mode 入門"
+  title: "RHEL Image Mode 入門 | Red Hat Enterprise Linux Interactive Labs"
   url: https://tnk4on.github.io/zt-image-mode-basics
   start_page: modules::01-create-an-image.adoc
 
