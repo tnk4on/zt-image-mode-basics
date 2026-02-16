@@ -1,0 +1,16 @@
+<nav class="nav" aria-label="Navigation">
+    <!-- navigation length: {{navigation.length}} -->
+    {{#each navigation}}
+    <!-- nav tree root: {{@index}} -->
+    <ul class="nav-list">
+        {{#each items}}
+        <li class="nav-item" data-depth="0">
+            <a class="nav-link" href="{{{url}}}">{{content}}</a>
+        </li>
+        {{/each}}
+    </ul>
+    {{/each}}
+    {{#unless navigation}}
+    <!-- no navigation data available -->
+    {{/unless}}
+</nav>
