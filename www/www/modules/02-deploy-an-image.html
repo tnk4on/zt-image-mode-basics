@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Untitled :: RHEL Image Mode 入門</title>
+    <link rel="canonical" href="https://tnk4on.github.io/zt-image-mode-basics/modules/02-deploy-an-image.html">
+    <meta name="generator" content="Antora 3.1.14">
+    <link rel="stylesheet" href="../_/css/site.css">
+<link rel="icon" href="../_/img/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<script src="https://unpkg.com/clipboard@2/dist/clipboard.min.js"></script>
+<link rel="stylesheet" href="../_/css/extra.css">  </head>
+  <body class="article">
+<header class="header" role="banner">
+
+</header>
+<div class="main-wrapper">
+<nav class="nav" aria-label="Navigation">
+    <ul class="nav-list">
+        <li class="nav-item">
+            <a class="nav-link" href="01-create-an-image.html">イメージの作成</a>
+        </li>
+        <li class="nav-item is-current-page">
+            <a class="nav-link" href="02-deploy-an-image.html">イメージのデプロイ</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="03-add-software-to-image.html">ソフトウェアの追加</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="04-apply-image.html">イメージの適用</a>
+        </li>
+    </ul>
+</nav>  <main class="main">
+<div class="toolbar" role="navigation">
+</div><article class="doc">
+    <div class="sect1">
+<h2 id="_bootc_image_builder_の起動"><a class="anchor" href="#_bootc_image_builder_の起動"></a>bootc-image-builder の起動</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>ここまでは、標準的な OCI イメージとツールを扱ってきました。しかし、bootc イメージはシステムとして使用することを目的としており、アプリケーションコンテナのように実行するものではありません。</p>
+</div>
+<div class="paragraph">
+<p>このイメージをホストとして起動するには、<code>bootc</code> を使用してファイルシステムにインストールします。ただし、<code>bootc</code> 自体はディスクやマシンの作成については関知しません。</p>
+</div>
+<div class="paragraph">
+<p>bootc イメージをホストにデプロイする方法は、ターゲット環境に応じて複数あります。このラボでは、KVM 仮想マシン上で実行する QCOW2 イメージを作成します。QCOW2 イメージのビルドには、<code>bootc-image-builder</code> というツールを使用します。</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>この操作の完了には約4分かかります。</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">podman run --rm --privileged \
+        --volume .:/output \
+        --volume ./config.json:/config.json \
+        --volume /var/lib/containers/storage:/var/lib/containers/storage \
+        registry.redhat.io/rhel10/bootc-image-builder:10.1 \
+        --type qcow2 \
+        --config config.json \
+         builder-{guid}.{domain}/test-bootc</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>このツールは、コンテナイメージの内容を仮想ディスクに展開するための <code>bootc</code> ツールを含む、コンテナ化されたバージョンの image builder です。サポートされる出力形式には AMI や VMDK があります。ベアメタルの場合は、<code>bootc</code> サポート付きの Anaconda を使用して物理ディスクにインストールできます。PXE や HTTP Boot など、RHEL ホストの一般的なインストール方法も利用できます。</p>
+</div>
+<div class="paragraph">
+<p>ビルド時、<code>bootc-image-builder</code> はディスク上のイメージを直接使用します。特定の操作に昇格された権限（例：root として実行する必要がある）が必要なため、イメージはシステムストレージの場所にある必要があります。元のビルドが一般ユーザーで行われた場合、<code>podman image scp</code> を使用してイメージをシステムストレージにコピーできます。</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_bootc_イメージの準備と実行"><a class="anchor" href="#_bootc_イメージの準備と実行"></a>bootc イメージの準備と実行</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>KVM ゲストを起動するため、作成した QCOW2 ディスクイメージをデフォルトの libvirt ストレージプールにコピーします。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">cp qcow2/disk.qcow2 /var/lib/libvirt/images/bootc-vm.qcow2</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>virt-install</code> を使用して、シンプルな VM を定義し、新しいディスクイメージをインポートします。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">virt-install --name bootc-vm \
+--disk /var/lib/libvirt/images/bootc-vm.qcow2 \
+--import \
+--memory 2048 \
+--graphics none \
+--osinfo rhel9-unknown \
+--noautoconsole \
+--noreboot</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>VM が定義されたら、起動できます。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">virsh start bootc-vm</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_bootc_イメージが動作する_vm_への_ssh_接続"><a class="anchor" href="#_bootc_イメージが動作する_vm_への_ssh_接続"></a>bootc イメージが動作する VM への SSH 接続</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>次に、VM にログインします。<code>VM SSH session</code> タブに切り替えてください。</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>SSH セッションが接続されない場合やエラーが発生した場合は、タブ名の横にある Refresh をクリックして再接続できます。プロンプトは次のようになります。</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/terminal-prompt.png" alt="terminal prompt">
+</div>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>システムの起動が完了したら、以下の認証情報でログインできます。これらの情報は、ディスクイメージ作成時に <code>bootc-image-builder</code> によって注入されたものです。ユーザーの作成や認証方法の処理には複数の方法があり、<code>bootc-image-builder</code> によるディスクイメージのカスタマイズはその1つです。</p>
+</div>
+<div class="paragraph">
+<p>以下の認証情報で VM にログインしてください。</p>
+</div>
+<div class="paragraph">
+<p>パスワード：</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">redhat</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>初期イメージには Apache が含まれているので、そのステータスを確認してみましょう。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">systemctl status httpd --no-pager</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>出力は次のようになります。</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/httpd-service.png" alt="httpd service">
+</div>
+</div>
+<div class="paragraph">
+<p>エディタ <code>vim</code> がインストールされているか確認してみましょう。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">which vim</code></pre>
+</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/no-vim.png" alt="no vim">
+</div>
+</div>
+<div class="paragraph">
+<p>標準エディタのインストールを忘れていました！</p>
+</div>
+<div class="paragraph">
+<p>次のステップで vim をイメージに追加しましょう。</p>
+</div>
+</div>
+</div>
+</article>
+<aside class="page-nav" role="navigation">
+    <div class="page-nav-inner">
+        <a class="page-nav-btn prev" href="01-create-an-image.html">
+            <span class="page-nav-label">前へ</span>
+            <span class="page-nav-title">イメージの作成</span>
+        </a>
+        <a class="page-nav-btn next" href="03-add-software-to-image.html">
+            <span class="page-nav-label">次へ</span>
+            <span class="page-nav-title">ソフトウェアの追加</span>
+        </a>
+    </div>
+</aside>  </main>
+</div>
+<footer role="contentinfo">
+  <div class="region region-rhd-footer">
+    <div id="block-rhdfooter" class="rhd-footer">
+      <nav class="rhd-footer-nav" aria-label="Secondary Navigation" role="navigation">
+  <ul class="rhd-menu">
+    
+  </ul>
+</nav>
+    </div>
+  </div>
+</footer>
+<script src="../_/js/site.js"></script>
+<script src="../_/js/vendor/highlight.js"></script>
+<script>hljs.initHighlighting()</script>
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+  integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+  integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+  integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+  </body>
+</html>

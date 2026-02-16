@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Untitled :: RHEL Image Mode 入門</title>
+    <link rel="canonical" href="https://tnk4on.github.io/zt-image-mode-basics/modules/04-apply-image.html">
+    <meta name="generator" content="Antora 3.1.14">
+    <link rel="stylesheet" href="../_/css/site.css">
+<link rel="icon" href="../_/img/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<script src="https://unpkg.com/clipboard@2/dist/clipboard.min.js"></script>
+<link rel="stylesheet" href="../_/css/extra.css">  </head>
+  <body class="article">
+<header class="header" role="banner">
+
+</header>
+<div class="main-wrapper">
+<nav class="nav" aria-label="Navigation">
+    <ul class="nav-list">
+        <li class="nav-item">
+            <a class="nav-link" href="01-create-an-image.html">イメージの作成</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="02-deploy-an-image.html">イメージのデプロイ</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="03-add-software-to-image.html">ソフトウェアの追加</a>
+        </li>
+        <li class="nav-item is-current-page">
+            <a class="nav-link" href="04-apply-image.html">イメージの適用</a>
+        </li>
+    </ul>
+</nav>  <main class="main">
+<div class="toolbar" role="navigation">
+</div><article class="doc">
+    <div class="sect1">
+<h2 id="_システム状態の確認"><a class="anchor" href="#_システム状態の確認"></a>システム状態の確認</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>VM SSH session</code> タブをクリックしてください。</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>SSH セッションが接続されない場合やエラーが発生した場合は、タブ名の横にある Refresh をクリックして再接続できます。プロンプトは次のようになります。</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/terminal-prompt.png" alt="terminal prompt">
+</div>
+</div>
+<div class="paragraph">
+<p>ログインパスワードは <code>redhat</code> です</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p><code>bootc</code> コマンドは、実行中のホストの状態とディスク上の利用可能なイメージを制御するものです。これにより、現在の状態の取得、更新の有無の確認、ロールの変更などを行います。<code>bootc status</code> コマンドで、その状態を確認できます。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo bootc status</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>起動中のイメージと、ホスト上にステージングされたイメージやロールバックイメージがあるかどうかを確認できます。各イメージの名前、バージョン、ダイジェストがこの基本ビューに表示されます。これらの意味については後ほど詳しく説明します。</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>bootc status</code> コマンドは、出力がパイプに渡されると自動的に完全なステータス詳細を YAML 形式で出力します。<code>--format</code> オプションに YAML または JSON の引数を指定することで、出力形式を制御できます。</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p><code>grep</code> を使用して特定の部分に注目し、詳細な出力をセクションごとに確認してみましょう。<code>spec</code> セクションは、使用中のイメージと <code>bootc</code> が参照している場所に関する情報を提供します。このホストはコンテナレジストリからプルしています。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo bootc status | grep spec: -A 4</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>staged</code> セクションは、次回の起動用にディスクにプルダウンされた情報を提供します。新規インストール直後のため、現時点では null です。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo bootc status | grep staged:</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>booted</code> セクションは、実行中の状態の詳細を示します。イメージ仕様（場合によっては <code>spec</code> セクションと異なることがあります）、内部の <code>ostree</code> バージョン、イメージの SHA256 ダイジェストが含まれます。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo bootc status | grep booted: -A 8</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>rollback</code> セクションは、必要に応じて <code>bootc</code> が戻す先の状態の詳細を示します。新規インストール直後のため、現時点では null です。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo bootc status | grep rollback: -A 8</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_vm_での更新の確認とダウンロード"><a class="anchor" href="#_vm_での更新の確認とダウンロード"></a>VM での更新の確認とダウンロード</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>更新されたイメージがレジストリで利用可能になったので、<code>bootc</code> がそれを検出するか確認しましょう。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo bootc upgrade --check</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>bootc</code> は <code>spec</code> に記載されたイメージを追跡しているため、レジストリに反映された時点で更新を検出します。SHA やバージョンなど、変更内容に関する詳細が表示されます。この更新をステージングしてみましょう。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo bootc upgrade</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>更新がレイヤー単位でプルされることに注目してください。これは、ビルドしたコンテナイメージの内容に基づいています。<code>vim</code> のインストールによりかなり大きな変更が発生したため、大きな更新をプルする必要があります。</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_システム状態の確認_2"><a class="anchor" href="#_システム状態の確認_2"></a>システム状態の確認</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>ディスク上で何が起きたか確認しましょう。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo bootc status</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>staged</code> セクションに、更新されたイメージの詳細が表示されます。これは <code>bootc upgrade</code> のデプロイフェーズによってディスク上に準備されたもので、次回の起動時にアクティブになります。</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_etc_での永続性のテスト"><a class="anchor" href="#_etc_での永続性のテスト"></a>/etc での永続性のテスト</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>更新を適用する際、bootc は新しいイメージから <code>/usr</code> のすべての変更をプルし、新しいソフトウェアのインストールを可能にします。<code>/etc</code> へのローカルの変更は新しいイメージの内容と_マージ_され、ローカルの変更が優先されます。bootc イメージの <code>/var</code> 構造内のものは実行中のホストには適用されません。これは起動後のマシン状態と見なされるためです。</p>
+</div>
+<div class="paragraph">
+<p>ユーザーパスワードを <code>1redhat</code> に変更してテストしてみましょう。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">echo 'core:1redhat' | sudo chpasswd</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>ステージングされると、変更は次回の再起動で反映されます。メンテナンスウィンドウを待つ必要がある場合は、変更の準備ができた時点でステージングし、再起動を後でスケジュールすることもできます。</p>
+</div>
+<div class="paragraph">
+<p>では、システムを今すぐ再起動して変更を適用しましょう。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo reboot</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>システムの再起動が完了したら、新しい認証情報でログインできます。このユーザーの認証情報は <code>/etc</code> に保存されているため、新しいパスワードが有効になっています。</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>タブ名の横にある Refresh をクリックするか、タブ中央の「Reconnect」ボタンをクリックして再接続してください。プロンプトは次のようになります。</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/terminal-prompt.png" alt="terminal prompt">
+</div>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>パスワード：</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">1redhat</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Apache がまだ実行中で、<code>vim</code> がインストールされていることを確認しましょう。</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">systemctl status httpd --no-pager</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">which vim</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>出力は次のようになるはずです。</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/test-httpd-vim.png" alt="test httpd vim">
+</div>
+</div>
+<div class="paragraph">
+<p>これで、Containerfile から新しい image mode システムを作成し、システムの更新を管理する方法を学びました。これは、独自の標準ビルドやアプリケーションで RHEL の image mode を探索するための良い基盤となるでしょう。後のラボでは、<code>rollback</code> や <code>switch</code> など、利用可能な他のライフサイクルオプションを探索します。</p>
+</div>
+</div>
+</div>
+</article>
+<aside class="page-nav" role="navigation">
+    <div class="page-nav-inner">
+        <a class="page-nav-btn prev" href="03-add-software-to-image.html">
+            <span class="page-nav-label">前へ</span>
+            <span class="page-nav-title">ソフトウェアの追加</span>
+        </a>
+    </div>
+</aside>  </main>
+</div>
+<footer role="contentinfo">
+  <div class="region region-rhd-footer">
+    <div id="block-rhdfooter" class="rhd-footer">
+      <nav class="rhd-footer-nav" aria-label="Secondary Navigation" role="navigation">
+  <ul class="rhd-menu">
+    
+  </ul>
+</nav>
+    </div>
+  </div>
+</footer>
+<script src="../_/js/site.js"></script>
+<script src="../_/js/vendor/highlight.js"></script>
+<script>hljs.initHighlighting()</script>
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+  integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+  integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+  integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+  </body>
+</html>
