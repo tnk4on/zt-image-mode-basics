@@ -1,11 +1,8 @@
-Sofware is controlled via the Containerfile. To change or add packages,
-they need to be defined here before build time. Updating already built
-images with later versions would only need a rebuild.
+ソフトウェアは Containerfile で管理されます。パッケージの変更や追加を行うには、ビルド前にここで定義する必要があります。すでにビルドされたイメージを新しいバージョンに更新する場合は、再ビルドするだけです。
 
-Switch to the `Build host` terminal and open the `Containervile` for editing.
+`Build host` ターミナルに切り替えて、`Containerfile` を編集用に開きます。
 
-To the end of the `+dnf install+` line, add `+vim+` to the list of
-packages installed.
+`+dnf install+` 行の末尾にパッケージ `+vim+` を追加します。
 
 [source,bash,run,subs=attributes+]
 ----
@@ -21,34 +18,26 @@ ADD etc /etc
 RUN dnf install -y httpd vim # <1>
 RUN systemctl enable httpd
 ----
-<1> Adding `vim` to this `RUN` line is the only update we need to make to install
-additional packages
+<1> この `RUN` 行に `vim` を追加するだけで、追加パッケージのインストールは完了です
 
-== Use podman to update the image.
+== podman を使用したイメージの更新
 
-With our changes in the Containerfile, we can re-run the
-`+podman build+` command to get an updated image.
+Containerfile に変更を加えたら、`+podman build+` コマンドを再実行して更新されたイメージを取得します。
 
 [source,bash,run,subs=attributes+]
 ----
 podman build -t builder-{guid}.{domain}/test-bootc .
 ----
 
-Since the `+RUN+` command to install software happens after the `+ADD+`
-command to install config files, notice `+podman+` used the cached layer
-rather than rebuilding it. Layer caching and ordering can be a powerful
-tool when designing and updating standard operating builds.
+ソフトウェアをインストールする `+RUN+` コマンドは、設定ファイルをインストールする `+ADD+` コマンドの後にあるため、`+podman+` は再ビルドせずにキャッシュされたレイヤーを使用していることに注目してください。レイヤーのキャッシュと順序は、標準的なオペレーティングビルドを設計・更新する際の強力なツールとなります。
 
-== Push the image to the registry
+== レジストリへのイメージのプッシュ
 
-Once the updated image has been built, we can push it to the registry.
-Once again, note how only the changed layers need to be added to the
-registry.
+更新されたイメージがビルドされたら、レジストリにプッシュします。ここでも、変更されたレイヤーのみがレジストリに追加されることに注目してください。
 
 [source,bash,run,subs=attributes+]
 ----
 podman push builder-{guid}.{domain}/test-bootc
 ----
 
-In the next step, we’ll look at how to update a running system from the
-new image we just pushed to the registry.
+次のステップでは、レジストリにプッシュした新しいイメージから実行中のシステムを更新する方法を見ていきます。

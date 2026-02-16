@@ -1,21 +1,14 @@
-== Launch bootc-image-builder
+== bootc-image-builder の起動
 
-To this point, we’ve been dealing with standard OCI images and tools.
-However, bootc images are intended to be systems, not run like
-application containers.
+ここまでは、標準的な OCI イメージとツールを扱ってきました。しかし、bootc イメージはシステムとして使用することを目的としており、アプリケーションコンテナのように実行するものではありません。
 
-To boot this image as a host, we install it to the filesystem using
-`+bootc+`. But `+bootc+` doesn’t know anything about creating disks or
-machines.
+このイメージをホストとして起動するには、`+bootc+` を使用してファイルシステムにインストールします。ただし、`+bootc+` 自体はディスクやマシンの作成については関知しません。
 
-There are several ways to deploy a bootc image to a host, depending on
-the target environment. For the purposes of this lab, we’ll create a
-QCOW2 image to be run on a KVM virtual machine. To build the QCOW2 image
-we’ll use a tool called `+bootc-image-builder+`.
+bootc イメージをホストにデプロイする方法は、ターゲット環境に応じて複数あります。このラボでは、KVM 仮想マシン上で実行する QCOW2 イメージを作成します。QCOW2 イメージのビルドには、`+bootc-image-builder+` というツールを使用します。
 
 [NOTE]
 ====
-This operation will take about 4 minutes to complete.
+この操作の完了には約4分かかります。
 ====
 
 [source,bash,run,subs=attributes+]
@@ -30,31 +23,20 @@ podman run --rm --privileged \
          builder-{guid}.{domain}/test-bootc
 ----
 
-This tool is a containerized version of image builder that includes the
-`+bootc+` tooling to unpack the container image contents to the virtual
-disk. Supported output formats include AMIs and VMDKs. For bare metal,
-we can use Anaconda with `+bootc+` support to install to physical disk.
-Other typical ways we’d install a RHEL host, like over PXE or HTTP Boot
-are also available to us.
+このツールは、コンテナイメージの内容を仮想ディスクに展開するための `+bootc+` ツールを含む、コンテナ化されたバージョンの image builder です。サポートされる出力形式には AMI や VMDK があります。ベアメタルの場合は、`+bootc+` サポート付きの Anaconda を使用して物理ディスクにインストールできます。PXE や HTTP Boot など、RHEL ホストの一般的なインストール方法も利用できます。
 
-When building, `+bootc-image-builder+` uses the image directly from
-disk. Since it requires elevated privileges (eg needs to be run as root)
-for certain operations, the image needs to be in the system storage
-location. If the original build was done as a normal user, the image can
-be copied to system storage using `+podman image scp+`.
+ビルド時、`+bootc-image-builder+` はディスク上のイメージを直接使用します。特定の操作に昇格された権限（例：root として実行する必要がある）が必要なため、イメージはシステムストレージの場所にある必要があります。元のビルドが一般ユーザーで行われた場合、`+podman image scp+` を使用してイメージをシステムストレージにコピーできます。
 
-== Prepare and run the bootc image
+== bootc イメージの準備と実行
 
-To launch a KVM guest, copy the QCOW2 disk image we created to the
-default libvirt storage pool.
+KVM ゲストを起動するため、作成した QCOW2 ディスクイメージをデフォルトの libvirt ストレージプールにコピーします。
 
 [source,bash,run,subs=attributes+]
 ----
 cp qcow2/disk.qcow2 /var/lib/libvirt/images/bootc-vm.qcow2
 ----
 
-Using `+virt-install+` we can define a simple VM and import the new disk
-image.
+`+virt-install+` を使用して、シンプルな VM を定義し、新しいディスクイメージをインポートします。
 
 [source,bash,run,subs=attributes+]
 ----
@@ -68,53 +50,47 @@ virt-install --name bootc-vm \
 --noreboot
 ----
 
-Once the VM has been defined, we can start it.
+VM が定義されたら、起動できます。
 
 [source,bash,run,subs=attributes+]
 ----
 virsh start bootc-vm
 ----
 
-== SSH to the VM running our bootc image
+== bootc イメージが動作する VM への SSH 接続
 
-Next, log into the VM. Switch to the `VM SSH session` tab.
+次に、VM にログインします。`VM SSH session` タブに切り替えてください。
 
 [NOTE] 
 ====
-If the SSH session hasn’t connected or there is an error,
-you can reconnect by clicking Refresh next to the tab name. The prompt
-will look like this.
+SSH セッションが接続されない場合やエラーが発生した場合は、タブ名の横にある Refresh をクリックして再接続できます。プロンプトは次のようになります。
 
 image::terminal-prompt.png[]
 ====
 
-Once the system has finished booting, you can log in with the following
-credentials. These were injected by `+bootc-image-builder+` when
-creating the disk image. There are several ways to handle user creation
-and authentication methods, customizing the disk image with
-`+bootc-image-builder+` is just one.
+システムの起動が完了したら、以下の認証情報でログインできます。これらの情報は、ディスクイメージ作成時に `+bootc-image-builder+` によって注入されたものです。ユーザーの作成や認証方法の処理には複数の方法があり、`+bootc-image-builder+` によるディスクイメージのカスタマイズはその1つです。
 
-Log into the vm with the following credentials.
+以下の認証情報で VM にログインしてください。
 
-Password:
+パスワード：
 
 [source,bash,run,subs=attributes+]
 ----
 redhat
 ----
 
-The initial image included Apache, so let’s check on it’s status
+初期イメージには Apache が含まれているので、そのステータスを確認してみましょう。
 
 [source,bash,run,subs=attributes+]
 ----
 systemctl status httpd --no-pager
 ----
 
-The output will look like this.
+出力は次のようになります。
 
 image::httpd-service.png[]
 
-Let’s check if the editor `+vim+` was installed.
+エディタ `+vim+` がインストールされているか確認してみましょう。
 
 [source,bash,run,subs=attributes+]
 ----
@@ -123,6 +99,6 @@ which vim
 
 image::no-vim.png[]
 
-Somehow, we missed installing our standard editor!
+標準エディタのインストールを忘れていました！
 
-Let’s add vim to our image in the next step
+次のステップで vim をイメージに追加しましょう。

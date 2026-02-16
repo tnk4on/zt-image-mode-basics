@@ -4,16 +4,16 @@ antora:
   dir: www
   modules:
     - name: "01-create-an-image"
-      label: "Create An Image"
+      label: "イメージの作成"
       solveButton: true
     - name: "02-deploy-an-image"
-      label: "Deploy An Image"
+      label: "イメージのデプロイ"
       solveButton: true
     - name: "03-add-software-to-image"
-      label: "Add Software To Image"
+      label: "ソフトウェアの追加"
       solveButton: true
     - name: "04-apply-image"
-      label: "Apply Image"
+      label: "イメージの適用"
       solveButton: true
 
 tabs:

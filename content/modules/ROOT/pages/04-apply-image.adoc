@@ -1,160 +1,124 @@
-== Exploring system status
+== システム状態の確認
 
-Click on the `VM SSH session` tab.
+`VM SSH session` タブをクリックしてください。
 
 [NOTE]
 ====
-If the SSH session hasn’t connected or there is an error,
-you can reconnect by clicking Refresh next to the tab name. The prompt will look like this.
+SSH セッションが接続されない場合やエラーが発生した場合は、タブ名の横にある Refresh をクリックして再接続できます。プロンプトは次のようになります。
 
 image::terminal-prompt.png[]
 
-Remember the login password is `redhat`
+ログインパスワードは `redhat` です
 ====
 
-The `+bootc+` command is what controls the state of the running host and
-the available images on disk. This is how we get the current state, if
-updates are available, change roles, and more. The `+bootc status+`
-command is how we explore that state.
+`+bootc+` コマンドは、実行中のホストの状態とディスク上の利用可能なイメージを制御するものです。これにより、現在の状態の取得、更新の有無の確認、ロールの変更などを行います。`+bootc status+` コマンドで、その状態を確認できます。
 
 [source,bash,run,subs=attributes+]
 ----
 sudo bootc status
 ----
 
-You can see the booted image, and if there are any staged or rollback
-images on the host. The name, version, and digest for each image are
-listed in this base view. We’ll talk more about what that means later.
+起動中のイメージと、ホスト上にステージングされたイメージやロールバックイメージがあるかどうかを確認できます。各イメージの名前、バージョン、ダイジェストがこの基本ビューに表示されます。これらの意味については後ほど詳しく説明します。
 
 [TIP]
 ====
-The `+bootc status+` command will detect if we pass the output
-to a pipe and automatically output the full status details in YAML. You
-can control that output by passing the `+--format+` option with either
-YAML or JSON arguments to get your preferred output.
+`+bootc status+` コマンドは、出力がパイプに渡されると自動的に完全なステータス詳細を YAML 形式で出力します。`+--format+` オプションに YAML または JSON の引数を指定することで、出力形式を制御できます。
 ====
 
-Let’s explore the detailed output section by section using `+grep+` to
-focus on certain parts. The `+spec+` section provides the information
-about the image in use and where `+bootc+` is looking for it. Our host
-is pulling from a container registry.
+`+grep+` を使用して特定の部分に注目し、詳細な出力をセクションごとに確認してみましょう。`+spec+` セクションは、使用中のイメージと `+bootc+` が参照している場所に関する情報を提供します。このホストはコンテナレジストリからプルしています。
 
 [source,bash,run,subs=attributes+]
 ----
 sudo bootc status | grep spec: -A 4
 ----
 
-The `+staged+` section provides information about what’s been pulled
-down to disk for the next boot. Since we just did a fresh install, this
-is null at the moment.
+`+staged+` セクションは、次回の起動用にディスクにプルダウンされた情報を提供します。新規インストール直後のため、現時点では null です。
 
 [source,bash,run,subs=attributes+]
 ----
 sudo bootc status | grep staged:
 ----
 
-The `+booted+` section details the running state, including an image
-spec (which may differ from the `+spec+` section in some cases). It has
-the internal `+ostree+` version and the SHA256 digest of the image.
+`+booted+` セクションは、実行中の状態の詳細を示します。イメージ仕様（場合によっては `+spec+` セクションと異なることがあります）、内部の `+ostree+` バージョン、イメージの SHA256 ダイジェストが含まれます。
 
 [source,bash,run,subs=attributes+]
 ----
 sudo bootc status | grep booted: -A 8
 ----
 
-The `+rollback+` section details the state `+bootc+` would revert to if
-desired. Since we just did a fresh install, this is null at the moment.
+`+rollback+` セクションは、必要に応じて `+bootc+` が戻す先の状態の詳細を示します。新規インストール直後のため、現時点では null です。
 
 [source,bash,run,subs=attributes+]
 ----
 sudo bootc status | grep rollback: -A 8
 ----
 
-== Check for and download updates in the VM
+== VM での更新の確認とダウンロード
 
-With the updated image available in the registry, let’s see if `+bootc+`
-detects it.
+更新されたイメージがレジストリで利用可能になったので、`+bootc+` がそれを検出するか確認しましょう。
 
 [source,bash,run,subs=attributes+]
 ----
 sudo bootc upgrade --check
 ----
 
-Since `+bootc+` tracks the image as listed in the `+spec+`, we see
-updates as soon as they hit the registry. We are shown some details
-about what changes will be made, like the SHA and version. Let’s go
-ahead and stage this update for use.
+`+bootc+` は `+spec+` に記載されたイメージを追跡しているため、レジストリに反映された時点で更新を検出します。SHA やバージョンなど、変更内容に関する詳細が表示されます。この更新をステージングしてみましょう。
 
 [source,bash,run,subs=attributes+]
 ----
 sudo bootc upgrade
 ----
 
-Notice how the update is pulled in layers. This is based on the contents
-of the container image we built. Since our `+vim+` install created a
-fairly sizable change, we need to pull in a large update.
+更新がレイヤー単位でプルされることに注目してください。これは、ビルドしたコンテナイメージの内容に基づいています。`+vim+` のインストールによりかなり大きな変更が発生したため、大きな更新をプルする必要があります。
 
-== Exploring system status
+== システム状態の確認
 
-Let’s see what happened on disk.
+ディスク上で何が起きたか確認しましょう。
 
 [source,bash,run,subs=attributes+]
 ----
 sudo bootc status
 ----
 
-The `+staged+` section now appears to show the details of our updated image. This
-has been prepared on disk by the `+bootc upgrade+` deployment phase and will be activated on the
-next boot.
+`+staged+` セクションに、更新されたイメージの詳細が表示されます。これは `+bootc upgrade+` のデプロイフェーズによってディスク上に準備されたもので、次回の起動時にアクティブになります。
 
-== Testing persistence in /etc
+== /etc での永続性のテスト
 
-When applying updates, bootc will pull any changes in `+/usr+` from the
-new image, letting us install new software. Any local changes to
-`+/etc+` will be _merged_ with what’s in the new image, with local changes
-winning. Nothing in the bootc image `+/var+` structure will be applied to the running host,
-as this is considered machine state after boot.
+更新を適用する際、bootc は新しいイメージから `+/usr+` のすべての変更をプルし、新しいソフトウェアのインストールを可能にします。`+/etc+` へのローカルの変更は新しいイメージの内容と_マージ_され、ローカルの変更が優先されます。bootc イメージの `+/var+` 構造内のものは実行中のホストには適用されません。これは起動後のマシン状態と見なされるためです。
 
-Let’s test this by changing our user password to `+1redhat+`
+ユーザーパスワードを `+1redhat+` に変更してテストしてみましょう。
 
 [source,bash,run,subs=attributes+]
 ----
 echo 'core:1redhat' | sudo chpasswd
 ----
 
-Once staged, the changes will take effect on the next reboot. If we
-needed to wait for a maintenance window we could stage changes
-when ready, then schedule the reboot for later. 
+ステージングされると、変更は次回の再起動で反映されます。メンテナンスウィンドウを待つ必要がある場合は、変更の準備ができた時点でステージングし、再起動を後でスケジュールすることもできます。
 
-Let’s go ahead and restart the system now to get our changes.
+では、システムを今すぐ再起動して変更を適用しましょう。
 
 [source,bash,run,subs=attributes+]
 ----
 sudo reboot
 ----
 
-Once the system has completed rebooting, you can log in with the new
-credentials. Since this user’s credentials are stored in `+/etc+`, the
-new password will be in effect.
+システムの再起動が完了したら、新しい認証情報でログインできます。このユーザーの認証情報は `+/etc+` に保存されているため、新しいパスワードが有効になっています。
 
 [NOTE]
 ====
-Remember to reconnect by clicking Refresh next to the tab
-name or clicking the "Reconnect" button in the center of the tab. 
-The prompt will look like this.
+タブ名の横にある Refresh をクリックするか、タブ中央の「Reconnect」ボタンをクリックして再接続してください。プロンプトは次のようになります。
 
 image::terminal-prompt.png[]
 ====
 
-Password:
+パスワード：
 
 [source,bash,run,subs=attributes+]
 ----
 1redhat
 ----
 
-Now let’s make sure Apache is still running and we have `+vim+`
-installed.
+Apache がまだ実行中で、`+vim+` がインストールされていることを確認しましょう。
 
 [source,bash,run,subs=attributes+]
 ----
@@ -166,12 +130,8 @@ systemctl status httpd --no-pager
 which vim
 ----
 
-Here’s what you should see as output.
+出力は次のようになるはずです。
 
 image::test-httpd-vim.png[]
 
-You’ve now created a new image mode system from a Containerfile and seen
-how to manage updates for the system. This should provide a good basis
-to explore image mode for RHEL with your own standard builds and
-applications. In later labs, we’ll explore some of the other available
-life cycle options like `+rollback+` and `+switch+`.
+これで、Containerfile から新しい image mode システムを作成し、システムの更新を管理する方法を学びました。これは、独自の標準ビルドやアプリケーションで RHEL の image mode を探索するための良い基盤となるでしょう。後のラボでは、`+rollback+` や `+switch+` など、利用可能な他のライフサイクルオプションを探索します。
